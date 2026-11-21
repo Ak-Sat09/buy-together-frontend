@@ -107,7 +107,7 @@ export function LoginPage() {
       </div>
 
       {import.meta.env.DEV ? (
-        <p className="mt-4 text-sm text-muted">Local development: the code is printed in the backend log.</p>
+        <p className="mt-4 text-sm text-muted">Testing: until SMS is set up, the code is printed in the backend log.</p>
       ) : null}
     </div>
   )

@@ -1,4 +1,6 @@
-const BASE_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8080').replace(/\/$/, '')
+// Live backend by default; set VITE_API_URL (e.g. http://localhost:8080) to use a local one
+const DEFAULT_API_URL = 'https://chronicle-blogs.duckdns.org/buy-together'
+const BASE_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '')
 
 /** Error body the backend sends (RFC 7807 problem+json with a stable `code`). */
 interface Problem {

@@ -47,15 +47,14 @@ It works on phones, has visible keyboard focus, labelled form fields, and respec
 
 ## Run locally
 
-Start the [backend](https://github.com/Ak-Sat09/buy-together) first. By default it runs on port 8080 and already allows `http://localhost:5173`.
-
 ```bash
 npm install
-cp .env.example .env      # change VITE_API_URL if the backend is not on localhost:8080
 npm run dev
 ```
 
-Open http://localhost:5173. In development the OTP is printed in the backend log.
+Open http://localhost:5173. By default the app talks to the live backend at `https://chronicle-blogs.duckdns.org/buy-together`, which already allows `localhost` and `*.vercel.app` in its CORS settings.
+
+To use the [standalone backend](https://github.com/Ak-Sat09/buy-together) on your machine instead, create `.env` with `VITE_API_URL=http://localhost:8080`. The OTP is then printed in that backend's log.
 
 | Command | What it does |
 |---|---|
@@ -68,13 +67,13 @@ Open http://localhost:5173. In development the OTP is printed in the backend log
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `VITE_API_URL` | `http://localhost:8080` | Backend address. Set it at build time |
+| `VITE_API_URL` | `https://chronicle-blogs.duckdns.org/buy-together` | Backend address. Set it at build time |
 
 ## Deploy on Vercel
 
 1. Import this repository in Vercel. It detects Vite automatically.
-2. Add `VITE_API_URL` with your backend URL, for example `https://api.example.com`.
-3. Add the Vercel domain to the backend's `CORS_ALLOWED_ORIGINS` so the browser is allowed to call it.
+2. No variables are needed: the build already points at `https://chronicle-blogs.duckdns.org/buy-together`. Set `VITE_API_URL` only to use a different backend.
+3. The backend allows every `*.vercel.app` domain. If you add a custom domain, add it to `BT_CORS_ALLOWED_ORIGINS` on the server.
 
 `vercel.json` sends every path to `index.html`, so links like `/groups/123` work on refresh.
 
