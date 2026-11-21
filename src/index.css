@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Barlow", ui-sans-serif, sans-serif;
+
+  /* Road palette: asphalt ink on a cool concrete page, lane-marking yellow for the one thing to act on */
+  --color-paper: #f3f5f7;
+  --color-surface: #ffffff;
+  --color-ink: #1c232b;
+  --color-ink-soft: #46515c;
+  --color-muted: #6b7682;
+  --color-line: #d6dce2;
+  --color-lane: #f2b705;
+  --color-lane-deep: #c99500;
+  --color-lane-wash: #fdf3d3;
+  --color-go: #1f7a52;
+  --color-go-wash: #e3f2ea;
+  --color-stop: #b83227;
+  --color-stop-wash: #f9e5e3;
+
+  --text-display: 3.8rem;
+  --text-display--line-height: 0.95;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-lane);
+    color: var(--color-ink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+@keyframes seat-in {
+  from {
+    transform: scaleY(0.2);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
