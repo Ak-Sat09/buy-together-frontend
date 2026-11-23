@@ -8,7 +8,7 @@ Backend: [Ak-Sat09/buy-together](https://github.com/Ak-Sat09/buy-together)
 
 ## What you can do
 
-- **Log in with your mobile number.** Enter the 6-digit code, with a resend timer. Your first login creates the account and asks for your name.
+- **Log in with mobile, email or Google.** Mobile and email get a 6-digit code with a resend timer, and Google uses the "Continue with Google" button. Your first login creates the account and asks for your name.
 - **Find groups** by brand and city right from the home page, or browse with filters for brand, city and status.
 - **Start a group.** The app first checks whether people in your city are already buying that brand. If an open group exists, it shows that group so you can join it, because one big group gets a better price. If not, you fill in the model, group size, buying date and a note.
 - **Group page:**
@@ -68,6 +68,7 @@ To use the [standalone backend](https://github.com/Ak-Sat09/buy-together) on you
 | Variable | Default | Purpose |
 |---|---|---|
 | `VITE_API_URL` | `https://chronicle-blogs.duckdns.org/buy-together` | Backend address. Set it at build time |
+| `VITE_GOOGLE_CLIENT_ID` | not set | Google OAuth client id, the same one the backend uses. "Continue with Google" shows only when this is set |
 
 ## Deploy on Vercel
 
@@ -82,7 +83,7 @@ To use the [standalone backend](https://github.com/Ak-Sat09/buy-together) on you
 ```
 src
 ├── api/hooks.ts        All backend calls as TanStack Query hooks
-├── auth/               Login session (stored in localStorage) and protected routes
+├── auth/               Login session (stored in localStorage), protected routes, Google button
 ├── components/         Shared pieces: buttons, form fields, seat strip, city plate, group list
 ├── features/group/     Group page parts: actions, chat, members, report form
 ├── lib/                API client with typed errors, shared types, date and phone formatting

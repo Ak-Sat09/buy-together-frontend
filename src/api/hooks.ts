@@ -94,16 +94,31 @@ export function useMessages(groupId: string, enabled: boolean) {
 
 /* Writes */
 
+/** Phone and email logins share one OTP flow; only the endpoint and the field name differ. */
+export type LoginChannel = 'phone' | 'email'
+
+const otpPath: Record<LoginChannel, string> = {
+  phone: '/api/auth/otp',
+  email: '/api/auth/email',
+}
+
 export function useSendOtp() {
   return useMutation({
-    mutationFn: (phone: string) => api<OtpChallenge>('/api/auth/otp/send', { method: 'POST', body: { phone } }),
+    mutationFn: ({ channel, address }: { channel: LoginChannel; address: string }) =>
+      api<OtpChallenge>(`${otpPath[channel]}/send`, { method: 'POST', body: { [channel]: address } }),
   })
 }
 
 export function useVerifyOtp() {
   return useMutation({
-    mutationFn: (input: { phone: string; otp: string; name?: string }) =>
-      api<LoginResponse>('/api/auth/otp/verify', { method: 'POST', body: input }),
+    mutationFn: ({ channel, address, otp, name }: { channel: LoginChannel; address: string; otp: string; name?: string }) =>
+      api<LoginResponse>(`${otpPath[channel]}/verify`, { method: 'POST', body: { [channel]: address, otp, name } }),
+  })
+}
+
+export function useGoogleLogin() {
+  return useMutation({
+    mutationFn: (credential: string) => api<LoginResponse>('/api/auth/google', { method: 'POST', body: { credential } }),
   })
 }
 

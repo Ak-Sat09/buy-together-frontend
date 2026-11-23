@@ -9,7 +9,8 @@ export interface Brand {
 
 export interface User {
   id: string
-  phone: string
+  phone: string | null
+  email: string | null
   name: string | null
   city: string | null
   createdAt: string

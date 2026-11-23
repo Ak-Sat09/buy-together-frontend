@@ -32,7 +32,7 @@ export function ProfilePage() {
       <p className="mt-2 text-ink-soft">
         {welcome
           ? 'Add your name so people in your groups know who they are talking to.'
-          : `Logged in as ${formatPhone(user.phone)}, member since ${formatDay(user.createdAt)}.`}
+          : `Logged in as ${user.phone ? formatPhone(user.phone) : user.email}, member since ${formatDay(user.createdAt)}.`}
       </p>
 
       <form onSubmit={submit} className="mt-8 grid gap-5 rounded-lg bg-surface p-6 ring-1 ring-line" noValidate>

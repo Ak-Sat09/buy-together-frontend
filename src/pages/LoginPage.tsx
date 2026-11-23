@@ -1,7 +1,9 @@
+import clsx from 'clsx'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
-import { useSendOtp, useVerifyOtp } from '../api/hooks'
+import { useGoogleLogin, useSendOtp, useVerifyOtp, type LoginChannel } from '../api/hooks'
 import { useAuth } from '../auth/AuthContext'
+import { GoogleButton, googleLoginEnabled } from '../auth/GoogleButton'
 import { Button } from '../components/Button'
 import { Field, Input } from '../components/Form'
 import { Notice } from '../components/Notice'
@@ -14,17 +16,37 @@ function safeNext(value: string | null) {
   return value && value.startsWith('/') && !value.startsWith('//') ? value : '/'
 }
 
+const channels: { value: LoginChannel; label: string }[] = [
+  { value: 'phone', label: 'Mobile' },
+  { value: 'email', label: 'Email' },
+]
+
+interface CodeTarget {
+  channel: LoginChannel
+  address: string
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof ApiError ? error.message : undefined
+}
+
+function looksSendable(channel: LoginChannel, value: string) {
+  return channel === 'phone' ? value.replace(/\D/g, '').length >= 10 : /^\S+@\S+\.\S+$/.test(value.trim())
+}
+
 export function LoginPage() {
   const { isLoggedIn, signIn } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const next = safeNext(params.get('next'))
 
-  const [phone, setPhone] = useState('')
-  const [codeSentTo, setCodeSentTo] = useState<string | null>(null)
+  const [channel, setChannel] = useState<LoginChannel>('phone')
+  const [addresses, setAddresses] = useState<Record<LoginChannel, string>>({ phone: '', email: '' })
+  const [codeSentTo, setCodeSentTo] = useState<CodeTarget | null>(null)
   const [resendIn, setResendIn] = useState(0)
 
   const sendOtp = useSendOtp()
+  const google = useGoogleLogin()
 
   useEffect(() => {
     if (resendIn <= 0) return
@@ -34,105 +56,174 @@ export function LoginPage() {
 
   if (isLoggedIn) return <Navigate to={next} replace />
 
-  function requestCode(targetPhone: string) {
-    sendOtp.mutate(targetPhone, {
+  function finish(response: LoginResponse) {
+    signIn(response)
+    navigate(response.newUser && !response.user.name ? '/profile?welcome=1' : next, { replace: true })
+  }
+
+  function requestCode(target: CodeTarget) {
+    sendOtp.mutate(target, {
       onSuccess: (challenge) => {
-        setCodeSentTo(targetPhone)
+        setCodeSentTo(target)
         setResendIn(challenge.resendAfterSeconds)
       },
     })
   }
 
-  function submitPhone(event: FormEvent) {
-    event.preventDefault()
-    requestCode(phone)
+  function switchChannel(value: LoginChannel) {
+    sendOtp.reset()
+    setChannel(value)
   }
+
+  function submitAddress(event: FormEvent) {
+    event.preventDefault()
+    requestCode({ channel, address: addresses[channel].trim() })
+  }
+
+  const address = addresses[channel]
+  const sendError = errorMessage(sendOtp.error)
 
   return (
     <div className="mx-auto max-w-md px-5 py-14">
       <h1 className="font-display text-4xl font-bold">Log in</h1>
-      <p className="mt-2 text-ink-soft">
-        Use your mobile number. We'll send a one-time code. New here? This also creates your account.
-      </p>
+      <p className="mt-2 text-ink-soft">We'll send you a one-time code. New here? This also creates your account.</p>
 
       <div className="mt-8 rounded-lg bg-surface p-6 ring-1 ring-line">
         {codeSentTo === null ? (
-          <form onSubmit={submitPhone} className="grid gap-5" noValidate>
-            <Field
-              label="Mobile number"
-              htmlFor="phone"
-              error={sendOtp.error instanceof ApiError ? sendOtp.error.message : undefined}
+          <>
+            <div role="tablist" aria-label="Log in with" className="mb-6 grid grid-cols-2 rounded-md bg-paper p-1 ring-1 ring-inset ring-line">
+              {channels.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="tab"
+                  id={`tab-${option.value}`}
+                  aria-selected={channel === option.value}
+                  aria-controls="login-form"
+                  onClick={() => switchChannel(option.value)}
+                  className={clsx(
+                    'h-9 rounded text-[15px] font-semibold transition-colors',
+                    channel === option.value ? 'bg-surface text-ink shadow-sm ring-1 ring-line' : 'text-ink-soft hover:text-ink',
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            <form
+              id="login-form"
+              role="tabpanel"
+              aria-labelledby={`tab-${channel}`}
+              onSubmit={submitAddress}
+              className="grid gap-5"
+              noValidate
             >
-              <div className="flex">
-                <span className="inline-flex h-11 items-center rounded-l-md bg-paper px-3 text-[15px] font-semibold text-ink-soft ring-1 ring-inset ring-line">
-                  +91
-                </span>
-                <Input
-                  id="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel-national"
-                  placeholder="98765 43210"
-                  className="rounded-l-none"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  aria-invalid={sendOtp.isError}
-                  aria-describedby={sendOtp.isError ? 'phone-error' : undefined}
-                  autoFocus
-                  required
-                />
-              </div>
-            </Field>
-            <Button type="submit" size="lg" busy={sendOtp.isPending} disabled={phone.replace(/\D/g, '').length < 10}>
-              Send code
-            </Button>
-          </form>
+              {channel === 'phone' ? (
+                <Field label="Mobile number" htmlFor="phone" error={sendError}>
+                  <div className="flex">
+                    <span className="inline-flex h-11 items-center rounded-l-md bg-paper px-3 text-[15px] font-semibold text-ink-soft ring-1 ring-inset ring-line">
+                      +91
+                    </span>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      placeholder="98765 43210"
+                      className="rounded-l-none"
+                      value={address}
+                      onChange={(e) => setAddresses((all) => ({ ...all, phone: e.target.value }))}
+                      aria-invalid={sendOtp.isError}
+                      aria-describedby={sendOtp.isError ? 'phone-error' : undefined}
+                      autoFocus
+                      required
+                    />
+                  </div>
+                </Field>
+              ) : (
+                <Field label="Email address" htmlFor="email" error={sendError}>
+                  <Input
+                    id="email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    value={address}
+                    onChange={(e) => setAddresses((all) => ({ ...all, email: e.target.value }))}
+                    aria-invalid={sendOtp.isError}
+                    aria-describedby={sendOtp.isError ? 'email-error' : undefined}
+                    autoFocus
+                    required
+                  />
+                </Field>
+              )}
+              <Button type="submit" size="lg" busy={sendOtp.isPending} disabled={!looksSendable(channel, address)}>
+                Send code
+              </Button>
+            </form>
+
+            {googleLoginEnabled ? (
+              <>
+                <div className="my-6 flex items-center gap-3 text-sm text-muted" aria-hidden="true">
+                  <span className="h-px flex-1 bg-line" />
+                  or
+                  <span className="h-px flex-1 bg-line" />
+                </div>
+                <GoogleButton onCredential={(credential) => google.mutate(credential, { onSuccess: finish })} />
+                {google.isPending ? <p className="mt-3 text-center text-sm text-ink-soft">Logging you in…</p> : null}
+                {google.isError ? (
+                  <Notice tone="error" className="mt-3">
+                    {errorMessage(google.error) ?? 'Google sign in failed, try again.'}
+                  </Notice>
+                ) : null}
+              </>
+            ) : null}
+          </>
         ) : (
           <VerifyStep
-            phone={codeSentTo}
+            target={codeSentTo}
             resendIn={resendIn}
             resending={sendOtp.isPending}
-            resendError={sendOtp.error instanceof ApiError ? sendOtp.error.message : undefined}
+            resendError={sendError}
             onResend={() => requestCode(codeSentTo)}
-            onChangeNumber={() => {
+            onChangeAddress={() => {
               sendOtp.reset()
               setCodeSentTo(null)
             }}
-            onVerified={(response) => {
-              signIn(response)
-              navigate(response.newUser && !response.user.name ? '/profile?welcome=1' : next, { replace: true })
-            }}
+            onVerified={finish}
           />
         )}
       </div>
 
       {import.meta.env.DEV ? (
-        <p className="mt-4 text-sm text-muted">Testing: until SMS is set up, the code is printed in the backend log.</p>
+        <p className="mt-4 text-sm text-muted">Testing: while the backend runs in log mode, the code is printed in its log.</p>
       ) : null}
     </div>
   )
 }
 
 interface VerifyStepProps {
-  phone: string
+  target: CodeTarget
   resendIn: number
   resending: boolean
   resendError?: string
   onResend: () => void
-  onChangeNumber: () => void
+  onChangeAddress: () => void
   onVerified: (response: LoginResponse) => void
 }
 
-function VerifyStep({ phone, resendIn, resending, resendError, onResend, onChangeNumber, onVerified }: VerifyStepProps) {
+function VerifyStep({ target, resendIn, resending, resendError, onResend, onChangeAddress, onVerified }: VerifyStepProps) {
   const [otp, setOtp] = useState('')
   const [name, setName] = useState('')
   const verify = useVerifyOtp()
   const codeInput = useRef<HTMLInputElement>(null)
+  const byEmail = target.channel === 'email'
 
   function submit(event: FormEvent) {
     event.preventDefault()
     verify.mutate(
-      { phone, otp, name: name.trim() || undefined },
+      { ...target, otp, name: name.trim() || undefined },
       {
         onSuccess: onVerified,
         onError: () => {
@@ -143,18 +234,18 @@ function VerifyStep({ phone, resendIn, resending, resendError, onResend, onChang
     )
   }
 
-  const error = verify.error instanceof ApiError ? verify.error.message : undefined
-
   return (
     <form onSubmit={submit} className="grid gap-5" noValidate>
       <p className="text-[15px] text-ink-soft">
-        Code sent to <span className="font-semibold text-ink">{formatPhone(phone)}</span>.{' '}
-        <button type="button" onClick={onChangeNumber} className="font-semibold text-ink underline underline-offset-4">
-          Change number
+        Code sent to{' '}
+        <span className="font-semibold break-all text-ink">{byEmail ? target.address : formatPhone(target.address)}</span>.{' '}
+        {byEmail ? 'Check your spam folder if it is not in your inbox. ' : null}
+        <button type="button" onClick={onChangeAddress} className="font-semibold text-ink underline underline-offset-4">
+          {byEmail ? 'Change email' : 'Change number'}
         </button>
       </p>
 
-      <Field label="6-digit code" htmlFor="otp" error={error}>
+      <Field label="6-digit code" htmlFor="otp" error={errorMessage(verify.error)}>
         <Input
           ref={codeInput}
           id="otp"
