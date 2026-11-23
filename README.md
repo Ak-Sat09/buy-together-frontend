@@ -73,7 +73,7 @@ To use the [standalone backend](https://github.com/Ak-Sat09/buy-together) on you
 ## Deploy on Vercel
 
 1. Import this repository in Vercel. It detects Vite automatically.
-2. No variables are needed: the build already points at `https://chronicle-blogs.duckdns.org/buy-together`. Set `VITE_API_URL` only to use a different backend.
+2. The build already points at `https://chronicle-blogs.duckdns.org/buy-together`. Set `VITE_API_URL` only to use a different backend. To show "Continue with Google", add `VITE_GOOGLE_CLIENT_ID` and redeploy, and add the Vercel URL under **Authorized JavaScript origins** in Google Cloud Console.
 3. The backend allows every `*.vercel.app` domain. If you add a custom domain, add it to `BT_CORS_ALLOWED_ORIGINS` on the server.
 
 `vercel.json` sends every path to `index.html`, so links like `/groups/123` work on refresh.
